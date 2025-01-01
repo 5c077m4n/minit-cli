@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log/slog"
+	"minit-cli/builder"
 	"minit-cli/store"
 )
 
@@ -16,8 +16,8 @@ func main() {
 		panic(err)
 	}
 
-	slog.Info(
-		"store",
-		"value", buildSrc,
-	)
+	err = builder.Build(buildSrc)
+	if err != nil {
+		panic(err)
+	}
 }
