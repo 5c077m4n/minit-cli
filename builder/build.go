@@ -3,6 +3,7 @@ package builder
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -24,40 +25,46 @@ func Build(script string) error {
 		client.WithAPIVersionNegotiation(),
 	)
 	if err != nil {
-		return err
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 	defer dockerClient.Close()
 
 	reader, err := dockerClient.ImagePull(ctx, "docker.io/library/debian", image.PullOptions{})
 	if err != nil {
-		return err
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 	defer reader.Close()
 
-	_, err = io.Copy(os.Stdout, reader)
-	if err != nil {
-		return err
+	if _, err := io.Copy(os.Stdout, reader); err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
-	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
-		Image: "debian",
-		Cmd: []string{
-			"cat", ">/package-getter", "<<END",
-			script,
-			"END",
-			"&&", "source", "/package-getter",
+	createResponse, err := dockerClient.ContainerCreate(
+		ctx,
+		&container.Config{
+			Image:      "debian",
+			WorkingDir: "/app",
+			Cmd:        []string{"bash", "-c", "'" + script + "'"},
+			Tty:        false,
 		},
-		Tty: false,
-	}, nil, nil, nil, "")
+		nil,
+		nil,
+		nil,
+		"",
+	)
 	if err != nil {
-		return err
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
-	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return err
+	if err := dockerClient.ContainerStart(ctx, createResponse.ID, container.StartOptions{}); err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
-	statusCh, errCh := dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := dockerClient.ContainerWait(
+		ctx,
+		createResponse.ID,
+		container.WaitConditionNotRunning,
+	)
 	select {
 	case err := <-errCh:
 		if err != nil {
@@ -74,19 +81,25 @@ func Build(script string) error {
 			)
 		}
 		if status.StatusCode != 0 {
-			return ErrRunBuildInDocker
+			return errors.Join(
+				ErrRunBuildInDocker,
+				fmt.Errorf("bad status code: %d", status.StatusCode),
+			)
 		}
 	}
 
-	out, err := dockerClient.ContainerLogs(ctx, resp.ID, container.LogsOptions{ShowStdout: true})
+	out, err := dockerClient.ContainerLogs(
+		ctx,
+		createResponse.ID,
+		container.LogsOptions{ShowStdout: true},
+	)
 	if err != nil {
-		return err
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 	defer out.Close()
 
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-	if err != nil {
-		return err
+	if _, err := stdcopy.StdCopy(os.Stdout, os.Stderr, out); err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
 	return nil

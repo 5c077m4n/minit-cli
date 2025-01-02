@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,18 +12,20 @@ import (
 )
 
 const (
+	storeGitName  = "minit-package-store"
 	buildFileName = "build.bash"
 	fetchFileName = "fetch.bash"
 )
 
 type PackageStore struct {
-	fs billy.Filesystem
+	fs  billy.Filesystem
+	dir string
 }
 
-var ErrScriptNotFound = errors.New("cloud not file the requested script")
+var ErrScriptNotFound = errors.New("cloud not find the requested script")
 
-func (ps *PackageStore) getScript(packageName, buildType string) (string, error) {
-	filename := filepath.Join("packages", packageName, buildType)
+func (ps *PackageStore) getScript(packageName, buildFile string) (string, error) {
+	filename := filepath.Join("packages", packageName, buildFile)
 
 	scriptFile, err := ps.fs.Open(filename)
 	if err != nil {
@@ -30,13 +33,12 @@ func (ps *PackageStore) getScript(packageName, buildType string) (string, error)
 	}
 	defer scriptFile.Close()
 
-	content := make([]byte, 4096)
-	readLength, err := scriptFile.Read(content)
+	script, err := io.ReadAll(scriptFile)
 	if err != nil {
 		return "", errors.Join(ErrScriptNotFound, err)
 	}
 
-	return string(content[:readLength]), nil
+	return string(script), nil
 }
 
 func (ps *PackageStore) GetBuildScript(packageName string) (string, error) {
@@ -48,13 +50,13 @@ func (ps *PackageStore) GetFetchScript(packageName string) (string, error) {
 }
 
 func New(commitish string) (*PackageStore, error) {
-	tempDir, err := os.MkdirTemp("", "minit")
+	tempDir, err := os.MkdirTemp("", "*.minit")
 	if err != nil {
 		return nil, err
 	}
 
 	cloneOpts := &git.CloneOptions{
-		URL:               "https://github.com/5c077m4n/minit-package-store.git",
+		URL:               "https://github.com/5c077m4n/" + storeGitName + ".git",
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress:          os.Stdout,
 	}
@@ -70,10 +72,12 @@ func New(commitish string) (*PackageStore, error) {
 	}
 
 	checkoutOpts := &git.CheckoutOptions{Hash: plumbing.NewHash(commitish)}
-	err = worktree.Checkout(checkoutOpts)
-	if err != nil {
+	if err := worktree.Checkout(checkoutOpts); err != nil {
 		return nil, err
 	}
 
-	return &PackageStore{fs: worktree.Filesystem}, nil
+	return &PackageStore{
+		fs:  worktree.Filesystem,
+		dir: filepath.Join(tempDir, storeGitName),
+	}, nil
 }
