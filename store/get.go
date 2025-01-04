@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -12,9 +11,7 @@ import (
 )
 
 const (
-	storeGitName  = "minit-package-store"
-	buildFileName = "build.bash"
-	fetchFileName = "fetch.bash"
+	storeGitName = "minit-package-store"
 )
 
 type PackageStore struct {
@@ -22,38 +19,25 @@ type PackageStore struct {
 	dir string
 }
 
-var ErrScriptNotFound = errors.New("cloud not find the requested script")
+var ErrScriptDirNotFound = errors.New("cloud not find the requested package scripts directory")
 
-func (ps *PackageStore) getScript(packageName, buildFile string) (string, error) {
-	filename := filepath.Join("packages", packageName, buildFile)
+func (ps *PackageStore) GetPackageDir(packageName string) (string, error) {
+	packageDir := filepath.Join("packages", packageName)
 
-	scriptFile, err := ps.fs.Open(filename)
+	scriptDir, err := ps.fs.Stat(packageDir)
 	if err != nil {
-		return "", errors.Join(ErrScriptNotFound, err)
+		return "", errors.Join(ErrScriptDirNotFound, err)
 	}
-	defer scriptFile.Close()
-
-	script, err := io.ReadAll(scriptFile)
-	if err != nil {
-		return "", errors.Join(ErrScriptNotFound, err)
+	if !scriptDir.IsDir() {
+		return "", ErrScriptDirNotFound
 	}
 
-	return string(script), nil
-}
-
-func (ps *PackageStore) GetBuildScript(packageName string) (string, error) {
-	return ps.getScript(packageName, buildFileName)
-}
-
-func (ps *PackageStore) GetFetchScript(packageName string) (string, error) {
-	return ps.getScript(packageName, fetchFileName)
+	return filepath.Join(ps.dir, packageDir), nil
 }
 
 func New(commitish string) (*PackageStore, error) {
-	tempDir, err := os.MkdirTemp("", "*.minit")
-	if err != nil {
-		return nil, err
-	}
+	stateDir := getStateDir()
+	repoDir := filepath.Join(stateDir, "minit", storeGitName)
 
 	cloneOpts := &git.CloneOptions{
 		URL:               "https://github.com/5c077m4n/" + storeGitName + ".git",
@@ -61,7 +45,15 @@ func New(commitish string) (*PackageStore, error) {
 		Progress:          os.Stdout,
 	}
 
-	repo, err := git.PlainClone(tempDir, false, cloneOpts)
+	repo, err := git.PlainClone(repoDir, false, cloneOpts)
+
+	if errors.Is(err, git.ErrRepositoryAlreadyExists) {
+		repo, err = git.PlainOpen(repoDir)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: add a pull from master here
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -76,8 +68,5 @@ func New(commitish string) (*PackageStore, error) {
 		return nil, err
 	}
 
-	return &PackageStore{
-		fs:  worktree.Filesystem,
-		dir: filepath.Join(tempDir, storeGitName),
-	}, nil
+	return &PackageStore{fs: worktree.Filesystem, dir: repoDir}, nil
 }

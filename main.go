@@ -15,8 +15,8 @@ func main() {
 	pkgStore, err := store.New("master")
 	check(err)
 
-	fetchScript, err := pkgStore.GetFetchScript("neovim")
+	scriptDir, err := pkgStore.GetPackageDir("neovim")
 	check(err)
 
-	check(builder.Build(fetchScript))
+	check(builder.Build(scriptDir, builder.BuildTypeFetch))
 }

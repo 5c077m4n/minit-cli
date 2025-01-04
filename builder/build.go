@@ -10,13 +10,21 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
 var ErrRunBuildInDocker = errors.New("running the build script inside docker has failed")
 
-func Build(script string) error {
+type BuildType string
+
+const (
+	BuildTypeBuild BuildType = "build"
+	BuildTypeFetch BuildType = "fetch"
+)
+
+func Build(packagDir string, buildType BuildType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -44,14 +52,14 @@ func Build(script string) error {
 		&container.Config{
 			Image:      "debian:11",
 			WorkingDir: "/app",
-			Cmd: []string{
-				"echo", "'" + script + "'",
-				"&&",
-				"bash", "-c", "'" + script + "'",
-			},
-			Tty: false,
+			Cmd:        []string{"bash", "./build/" + string(buildType) + ".bash"},
+			Tty:        false,
 		},
-		nil,
+		&container.HostConfig{
+			Mounts: []mount.Mount{
+				{Type: mount.TypeBind, Source: packagDir, Target: "/app/build/", ReadOnly: true},
+			},
+		},
 		nil,
 		nil,
 		"",
