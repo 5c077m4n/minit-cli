@@ -29,7 +29,7 @@ func Build(script string) error {
 	}
 	defer dockerClient.Close()
 
-	reader, err := dockerClient.ImagePull(ctx, "docker.io/library/debian", image.PullOptions{})
+	reader, err := dockerClient.ImagePull(ctx, "docker.io/library/debian:11", image.PullOptions{})
 	if err != nil {
 		return errors.Join(ErrRunBuildInDocker, err)
 	}
@@ -42,10 +42,14 @@ func Build(script string) error {
 	createResponse, err := dockerClient.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image:      "debian",
+			Image:      "debian:11",
 			WorkingDir: "/app",
-			Cmd:        []string{"bash", "-c", "'" + script + "'"},
-			Tty:        false,
+			Cmd: []string{
+				"echo", "'" + script + "'",
+				"&&",
+				"bash", "-c", "'" + script + "'",
+			},
+			Tty: false,
 		},
 		nil,
 		nil,
