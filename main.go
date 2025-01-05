@@ -13,17 +13,15 @@ func must1(err error) {
 }
 
 func must2[T any](value T, err error) T {
-	if err != nil {
-		panic(err)
-	}
+	must1(err)
 	return value
 }
 
 func main() {
 	cliArgs := must2(cli.GetCLIArgs())
 
-	pkgStore := must2(store.New(cliArgs.Package))
-	scriptDir := must2(pkgStore.GetPackageDir(cliArgs.Version))
+	pkgStore := must2(store.New(cliArgs.Version))
+	scriptDir := must2(pkgStore.GetPackageDir(cliArgs.Package))
 
 	must1(builder.Build(cliArgs.Package, scriptDir, builder.BuildTypeFetch))
 }

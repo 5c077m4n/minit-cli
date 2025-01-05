@@ -20,7 +20,11 @@ type PackageStore struct {
 	dir string
 }
 
-var ErrScriptDirNotFound = errors.New("cloud not find the requested package scripts directory")
+var (
+	ErrScriptDirNotFound = errors.New("could not find the requested package scripts directory")
+	ErrBadCheckout       = errors.New("could not checkout the requested store version")
+	ErrBadPull           = errors.New("could not pull the requested store latest version")
+)
 
 func (ps *PackageStore) GetPackageDir(packageName string) (string, error) {
 	packageDir := filepath.Join(
@@ -68,12 +72,12 @@ func New(commitish string) (*PackageStore, error) {
 		Branch: plumbing.NewBranchReferenceName(commitish),
 	}
 	if err := worktree.Checkout(checkoutOpts); err != nil {
-		return nil, err
+		return nil, errors.Join(ErrBadCheckout, err)
 	}
 
 	err = worktree.Pull(&git.PullOptions{RemoteName: "origin", Force: true})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return nil, err
+		return nil, errors.Join(ErrBadPull, err)
 	}
 
 	return &PackageStore{fs: worktree.Filesystem, dir: repoDir}, nil
