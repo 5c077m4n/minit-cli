@@ -48,10 +48,6 @@ func New(commitish string) (*PackageStore, error) {
 
 	if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 		repo, err = git.PlainOpen(repoDir)
-		if err != nil {
-			return nil, err
-		}
-		// TODO: add a pull from master here
 	}
 	if err != nil {
 		return nil, err
@@ -62,8 +58,15 @@ func New(commitish string) (*PackageStore, error) {
 		return nil, err
 	}
 
-	checkoutOpts := &git.CheckoutOptions{Hash: plumbing.NewHash(commitish)}
+	checkoutOpts := &git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(commitish),
+	}
 	if err := worktree.Checkout(checkoutOpts); err != nil {
+		return nil, err
+	}
+
+	err = worktree.Pull(&git.PullOptions{RemoteName: "origin", Force: true})
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return nil, err
 	}
 
