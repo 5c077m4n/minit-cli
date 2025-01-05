@@ -44,7 +44,6 @@ func New(commitish string) (*PackageStore, error) {
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress:          os.Stdout,
 	}
-
 	repo, err := git.PlainClone(repoDir, false, cloneOpts)
 
 	if errors.Is(err, git.ErrRepositoryAlreadyExists) {

@@ -5,18 +5,18 @@ import (
 	"minit-cli/store"
 )
 
-func check(err error) {
+func must[T any](value T, err error) T {
 	if err != nil {
 		panic(err)
 	}
+	return value
 }
 
 func main() {
-	pkgStore, err := store.New("master")
-	check(err)
+	pkgStore := must(store.New("master"))
+	scriptDir := must(pkgStore.GetPackageDir("neovim"))
 
-	scriptDir, err := pkgStore.GetPackageDir("neovim")
-	check(err)
-
-	check(builder.Build(scriptDir, builder.BuildTypeFetch))
+	if err := builder.Build(scriptDir, builder.BuildTypeFetch); err != nil {
+		panic(err)
+	}
 }
