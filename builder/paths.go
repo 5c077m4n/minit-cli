@@ -28,7 +28,7 @@ func createPackageBinDir(packageName string) (string, error) {
 		runtime.GOOS,
 		runtime.GOARCH,
 	)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return "", errors.Join(ErrCouldNotCreatPackageDataDir, err)
 	}
 

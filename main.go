@@ -2,10 +2,17 @@ package main
 
 import (
 	"minit-cli/builder"
+	"minit-cli/cli"
 	"minit-cli/store"
 )
 
-func must[T any](value T, err error) T {
+func must1(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func must2[T any](value T, err error) T {
 	if err != nil {
 		panic(err)
 	}
@@ -13,10 +20,10 @@ func must[T any](value T, err error) T {
 }
 
 func main() {
-	pkgStore := must(store.New("master"))
-	scriptDir := must(pkgStore.GetPackageDir("neovim"))
+	cliArgs := must2(cli.GetCLIArgs())
 
-	if err := builder.Build("neovim", scriptDir, builder.BuildTypeFetch); err != nil {
-		panic(err)
-	}
+	pkgStore := must2(store.New(cliArgs.Package))
+	scriptDir := must2(pkgStore.GetPackageDir(cliArgs.Version))
+
+	must1(builder.Build(cliArgs.Package, scriptDir, builder.BuildTypeFetch))
 }

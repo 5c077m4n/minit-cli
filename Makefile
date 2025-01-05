@@ -2,7 +2,7 @@ colima_docker_sock = unix:///$$HOME/.config/colima/default/docker.sock
 
 .PHONY: start-dev
 start-dev:
-	DOCKER_HOST=$(colima_docker_sock) go run .
+	DOCKER_HOST=$(colima_docker_sock) go run . $(flags)
 
 .PHONY: mod-tidy
 mod-tidy:
