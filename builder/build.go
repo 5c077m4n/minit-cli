@@ -57,7 +57,12 @@ func Build(packagDir string, buildType BuildType) error {
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{
-				{Type: mount.TypeBind, Source: packagDir, Target: "/app/scripts/", ReadOnly: true},
+				{
+					Type:     mount.TypeBind,
+					Source:   packagDir,
+					Target:   "/app/scripts/",
+					ReadOnly: true,
+				},
 			},
 		},
 		nil,
@@ -68,7 +73,22 @@ func Build(packagDir string, buildType BuildType) error {
 		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
-	if err := dockerClient.ContainerStart(ctx, createResponse.ID, container.StartOptions{}); err != nil {
+	err = dockerClient.ContainerStart(ctx, createResponse.ID, container.StartOptions{})
+	if err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
+	}
+
+	out, err := dockerClient.ContainerLogs(
+		ctx,
+		createResponse.ID,
+		container.LogsOptions{ShowStdout: true},
+	)
+	if err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
+	}
+	defer out.Close()
+
+	if _, err := stdcopy.StdCopy(os.Stdout, os.Stderr, out); err != nil {
 		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
@@ -98,20 +118,6 @@ func Build(packagDir string, buildType BuildType) error {
 				fmt.Errorf("bad status code: %d", status.StatusCode),
 			)
 		}
-	}
-
-	out, err := dockerClient.ContainerLogs(
-		ctx,
-		createResponse.ID,
-		container.LogsOptions{ShowStdout: true},
-	)
-	if err != nil {
-		return errors.Join(ErrRunBuildInDocker, err)
-	}
-	defer out.Close()
-
-	if _, err := stdcopy.StdCopy(os.Stdout, os.Stderr, out); err != nil {
-		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
 	return nil
