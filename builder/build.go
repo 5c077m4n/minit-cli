@@ -52,12 +52,12 @@ func Build(packagDir string, buildType BuildType) error {
 		&container.Config{
 			Image:      "debian:11",
 			WorkingDir: "/app",
-			Cmd:        []string{"bash", "./build/" + string(buildType) + ".bash"},
+			Cmd:        []string{"bash", "./scripts/" + string(buildType) + ".bash"},
 			Tty:        false,
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{
-				{Type: mount.TypeBind, Source: packagDir, Target: "/app/build/", ReadOnly: true},
+				{Type: mount.TypeBind, Source: packagDir, Target: "/app/scripts/", ReadOnly: true},
 			},
 		},
 		nil,

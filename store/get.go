@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	storeGitName = "minit-package-store"
+	storeRepoName = "minit-package-store"
 )
 
 type PackageStore struct {
@@ -22,7 +23,12 @@ type PackageStore struct {
 var ErrScriptDirNotFound = errors.New("cloud not find the requested package scripts directory")
 
 func (ps *PackageStore) GetPackageDir(packageName string) (string, error) {
-	packageDir := filepath.Join("packages", packageName)
+	packageDir := filepath.Join(
+		"packages",
+		packageName,
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
 
 	scriptDir, err := ps.fs.Stat(packageDir)
 	if err != nil {
@@ -37,10 +43,10 @@ func (ps *PackageStore) GetPackageDir(packageName string) (string, error) {
 
 func New(commitish string) (*PackageStore, error) {
 	stateDir := getStateDir()
-	repoDir := filepath.Join(stateDir, "minit", storeGitName)
+	repoDir := filepath.Join(stateDir, "minit", storeRepoName)
 
 	cloneOpts := &git.CloneOptions{
-		URL:               "https://github.com/5c077m4n/" + storeGitName + ".git",
+		URL:               "https://github.com/5c077m4n/" + storeRepoName + ".git",
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress:          os.Stdout,
 	}
