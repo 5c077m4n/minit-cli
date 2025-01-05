@@ -16,7 +16,7 @@ func main() {
 	pkgStore := must(store.New("master"))
 	scriptDir := must(pkgStore.GetPackageDir("neovim"))
 
-	if err := builder.Build(scriptDir, builder.BuildTypeFetch); err != nil {
+	if err := builder.Build("neovim", scriptDir, builder.BuildTypeFetch); err != nil {
 		panic(err)
 	}
 }

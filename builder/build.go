@@ -24,7 +24,7 @@ const (
 	BuildTypeFetch BuildType = "fetch"
 )
 
-func Build(packagDir string, buildType BuildType) error {
+func Build(packageName, packagDir string, buildType BuildType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -47,6 +47,11 @@ func Build(packagDir string, buildType BuildType) error {
 		return errors.Join(ErrRunBuildInDocker, err)
 	}
 
+	finalDataDir, err := createPackageBinDir(packageName)
+	if err != nil {
+		return errors.Join(ErrRunBuildInDocker, err)
+	}
+
 	createResponse, err := dockerClient.ContainerCreate(
 		ctx,
 		&container.Config{
@@ -62,6 +67,11 @@ func Build(packagDir string, buildType BuildType) error {
 					Source:   packagDir,
 					Target:   "/app/scripts/",
 					ReadOnly: true,
+				},
+				{
+					Type:   mount.TypeBind,
+					Source: finalDataDir,
+					Target: "/app/final/",
 				},
 			},
 		},
