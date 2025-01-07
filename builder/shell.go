@@ -24,7 +24,7 @@ const (
 	BuildTypeFetch BuildType = "fetch"
 )
 
-func Build(packageName, packagDir string, buildType BuildType) error {
+func BuildShell(packageName, packagDir string, buildType BuildType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 

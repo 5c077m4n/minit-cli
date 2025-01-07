@@ -6,6 +6,7 @@ require (
 	github.com/docker/docker v27.4.1+incompatible
 	github.com/go-git/go-billy/v5 v5.6.1
 	github.com/go-git/go-git/v5 v5.13.1
+	github.com/yuin/gopher-lua v1.1.1
 )
 
 require (
