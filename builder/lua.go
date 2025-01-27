@@ -20,7 +20,9 @@ var (
 )
 
 func loader(luaState *lua.LState) int {
-	exports := map[string]lua.LGFunction{}
+	exports := map[string]lua.LGFunction{
+		"fetchTar": fetchTar,
+	}
 
 	mod := luaState.SetFuncs(luaState.NewTable(), exports)
 	luaState.SetField(mod, "name", lua.LString("minit"))
@@ -29,18 +31,9 @@ func loader(luaState *lua.LState) int {
 	return 1
 }
 
-func BuildLua(packageName, packagDir string, buildType BuildType) error {
-	luaState := lua.NewState()
-	defer luaState.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	luaState.SetContext(ctx)
-	luaState.PreloadModule("minit", loader)
-
+func sanitizeState(luaState *lua.LState) error {
 	for _, pair := range []luaFuncPair{
-		{lua.LoadLibName, lua.OpenPackage}, // Must be first(!)
+		//{lua.LoadLibName, lua.OpenPackage}, // Must be first(!)
 		{lua.BaseLibName, lua.OpenBase},
 		{lua.TabLibName, lua.OpenTable},
 	} {
@@ -55,6 +48,23 @@ func BuildLua(packageName, packagDir string, buildType BuildType) error {
 		if err != nil {
 			return errors.Join(ErrLuaSetup, err)
 		}
+	}
+
+	return nil
+}
+
+func BuildLua(packageName, packagDir string, buildType BuildType) error {
+	luaState := lua.NewState()
+	defer luaState.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	luaState.SetContext(ctx)
+	luaState.PreloadModule("minit", loader)
+
+	if err := sanitizeState(luaState); err != nil {
+		return errors.Join(ErrLuaSetup, err)
 	}
 
 	luaFilePath := filepath.Join(packagDir, string(buildType)+".lua")

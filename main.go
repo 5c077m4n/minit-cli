@@ -23,5 +23,5 @@ func main() {
 	pkgStore := must2(store.New(cliArgs.Version))
 	scriptDir := must2(pkgStore.GetPackageDir(cliArgs.Package))
 
-	must1(builder.BuildShell(cliArgs.Package, scriptDir, builder.BuildTypeFetch))
+	must1(builder.BuildLua(cliArgs.Package, scriptDir, builder.BuildTypeFetch))
 }
